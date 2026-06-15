@@ -687,19 +687,24 @@ body::before {
    AUDIO ENGINE — Web Audio synthesis, no audio files
    ================================================================ */
 class AudioEngine {
-  constructor() { this.ctx = null; }
+  constructor() { this.ctx = null; this._resumed = false; }
   init() {
     if (this.ctx) return;
     try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
   }
-  _ensure() {
+  async _ensure() {
     if (!this.ctx) this.init();
     if (!this.ctx) return null;
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+    // iOS Safari keeps AudioContext in "suspended" until a user gesture
+    // resumes it. resume() returns a Promise — we MUST await it before
+    // scheduling any audio nodes, otherwise they are silently dropped.
+    if (this.ctx.state === 'suspended') {
+      try { await this.ctx.resume(); } catch(e) {}
+    }
     return this.ctx;
   }
-  coinClink(delay = 0) {
-    const ctx = this._ensure(); if (!ctx) return;
+  async coinClink(delay = 0) {
+    const ctx = await this._ensure(); if (!ctx) return;
     const t = ctx.currentTime + delay;
     const osc = ctx.createOscillator(); const gain = ctx.createGain();
     osc.type = 'sine';
@@ -710,8 +715,8 @@ class AudioEngine {
     osc.connect(gain); gain.connect(ctx.destination);
     osc.start(t); osc.stop(t + 0.15);
   }
-  coinToss() {
-    const ctx = this._ensure(); if (!ctx) return;
+  async coinToss() {
+    const ctx = await this._ensure(); if (!ctx) return;
     const bufferSize = ctx.sampleRate * 0.06;
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = buffer.getChannelData(0);
@@ -724,10 +729,10 @@ class AudioEngine {
     noise.start(ctx.currentTime);
     this.coinClink(0); this.coinClink(0.03); this.coinClink(0.06);
   }
-  coinLand() {
-    const ctx = this._ensure(); if (!ctx) return;
+  async coinLand() {
+    const ctx = await this._ensure(); if (!ctx) return;
     setTimeout(() => {
-      if (!ctx) return;
+      if (!ctx || ctx.state === 'closed') return;
       const t = ctx.currentTime;
       const osc = ctx.createOscillator(); const gain = ctx.createGain();
       osc.type = 'sine';
@@ -739,8 +744,8 @@ class AudioEngine {
       osc.start(t); osc.stop(t + 0.25);
     }, 120);
   }
-  complete() {
-    const ctx = this._ensure(); if (!ctx) return;
+  async complete() {
+    const ctx = await this._ensure(); if (!ctx) return;
     [523, 659, 784, 1047].forEach((freq, i) => {
       const t = ctx.currentTime + i * 0.1;
       const osc = ctx.createOscillator(); const gain = ctx.createGain();
@@ -1026,6 +1031,7 @@ function advanceLine() {
    CASTING FLOW
    ================================================================ */
 function startCasting() {
+  audio.init();  // ensure AudioContext exists (belt-and-suspenders with button handlers)
   state.question = questionInput.value.trim();
   state.currentLine = 0;
   state.lines = [];
@@ -1251,7 +1257,7 @@ questionInput.addEventListener('keydown', (e) => {
    PWA SERVICE WORKER
    ================================================================ */
 if ('serviceWorker' in navigator) {
-  const swCode = `const CACHE='liuyao-v3';self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])));self.skipWaiting()});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))));self.clients.claim()});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
+  const swCode = `const CACHE='liuyao-v4';self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])));self.skipWaiting()});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))));self.clients.claim()});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
   const blob = new Blob([swCode], { type: 'application/javascript' });
   navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
 }
