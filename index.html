@@ -982,6 +982,10 @@ function showPlaceholder() {
   $('btnConfirm').disabled = true;
   $('btnConfirm').style.opacity = '0.4';
   $('btnConfirm').style.pointerEvents = 'none';
+  // Re-enable random button (may have been disabled by previous randomThrow)
+  $('btnRandom').disabled = false;
+  $('btnRandom').style.opacity = '1';
+  $('btnRandom').style.pointerEvents = 'auto';
 }
 
 function enableConfirm() {
@@ -1021,7 +1025,8 @@ function lockCurrentLine() {
 function advanceLine() {
   state.currentLine++;
   if (state.currentLine >= 6) {
-    setTimeout(() => showResult(), 500);
+    // All 6 lines locked — show result directly, no extra setTimeout
+    showResult();
   } else {
     renderCastingScreen();
   }
@@ -1059,13 +1064,17 @@ function renderCastingScreen() {
 }
 
 function confirmLine() {
-  // Guard: prevent double-lock (e.g. from accidental press during random animation)
+  // Guard: only accept exactly one lock per line position
   if (state.lines.length !== state.currentLine) return;
+  // Guard: prevent > 6 lines (should never happen, belt-and-suspenders)
+  if (state.lines.length >= 6) return;
   lockCurrentLine();
   advanceLine();
 }
 
 function randomThrow() {
+  // Guard: prevent extra throws beyond 6 lines or double-throw on same line
+  if (state.lines.length >= 6 || state.lines.length !== state.currentLine) return;
   const arr = getRandomBytes(3);
   state.coinStates = Array.from(arr).map(v => (v < 128 ? 'heads' : 'tails'));
   renderCoins();
@@ -1074,8 +1083,15 @@ function randomThrow() {
     void el.offsetWidth;
     setTimeout(() => el.classList.add('rolling'), i * 60);
   });
+  // Disable both buttons during animation to prevent double-tap
+  $('btnConfirm').disabled = true;
+  $('btnConfirm').style.opacity = '0.4';
+  $('btnConfirm').style.pointerEvents = 'none';
+  $('btnRandom').disabled = true;
+  $('btnRandom').style.opacity = '0.4';
+  $('btnRandom').style.pointerEvents = 'none';
   lockCurrentLine();
-  setTimeout(() => advanceLine(), 450);
+  setTimeout(() => advanceLine(), 350);
 }
 
 /* ================================================================
@@ -1088,6 +1104,8 @@ function showResult() {
 
   const binary = buildBinary(state.lines);
   const hexagram = getHexagram(binary);
+  // Safety: if data is somehow corrupted (should never happen), bail gracefully
+  if (!hexagram) { showScreen('welcome'); return; }
   const changingLines = state.lines.map((l, i) => l.changing ? i : -1).filter(i => i >= 0);
   const hasChanging = changingLines.length > 0;
 
