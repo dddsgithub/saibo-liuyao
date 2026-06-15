@@ -759,12 +759,20 @@ class AudioEngine {
    ================================================================ */
 class HapticEngine {
   constructor() {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const ua = navigator.userAgent;
+    this._isiOS = /iPad|iPhone|iPod/.test(ua)
       || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    this.supported = isIOS;
+    this._isAndroid = /Android/.test(ua);
+    this.supported = this._isiOS || this._isAndroid;
   }
   pulse() {
-    if (!this.supported) return;
+    // Android: standard Vibration API — 15ms light tap
+    if (this._isAndroid && navigator.vibrate) {
+      navigator.vibrate(15);
+      return;
+    }
+    if (!this._isiOS) return;
+    // iOS: toggle a hidden <input switch> to trigger Taptic Engine
     try {
       const id = 'hx-' + Date.now();
       const input = document.createElement('input'); const label = document.createElement('label');
@@ -1046,7 +1054,7 @@ function renderCastingScreen() {
 
 function confirmLine() {
   // Guard: prevent double-lock (e.g. from accidental press during random animation)
-  if (state.lines.length > state.currentLine) return;
+  if (state.lines.length !== state.currentLine) return;
   lockCurrentLine();
   advanceLine();
 }
@@ -1248,7 +1256,6 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
 }
 
-haptic._check();
 </script>
 
 </body>
