@@ -1198,13 +1198,17 @@ function copyPrompt() {
   });
   prompt += '\n';
   if (hasChanging && transformed) {
-    prompt += `【变卦】\n${transformed.unicode} ${transformed.full_name}（第${transformed.id}卦 · ${transformed.name_cn}）\n\n`;
+    prompt += `【变卦】\n${transformed.unicode} ${transformed.full_name}（第${transformed.id}卦 · ${transformed.name_cn}）\n`;
+    prompt += `变卦卦辞：${transformed.gua_ci}\n`;
+    if (transformed.tuan_ci) prompt += `变卦彖传：${transformed.tuan_ci}\n`;
+    if (transformed.da_xiang_ci) prompt += `变卦大象：${transformed.da_xiang_ci}\n`;
+    prompt += '\n';
   } else {
     prompt += `【变卦】\n无变卦（六爻皆静）\n\n`;
   }
-  prompt += `【卦辞】\n${hexagram.gua_ci}\n\n`;
-  if (hexagram.tuan_ci) prompt += `【彖传】\n${hexagram.tuan_ci}\n\n`;
-  if (hexagram.da_xiang_ci) prompt += `【大象传】\n${hexagram.da_xiang_ci}\n\n`;
+  prompt += `【本卦卦辞】\n${hexagram.gua_ci}\n\n`;
+  if (hexagram.tuan_ci) prompt += `【本卦彖传】\n${hexagram.tuan_ci}\n\n`;
+  if (hexagram.da_xiang_ci) prompt += `【本卦大象传】\n${hexagram.da_xiang_ci}\n\n`;
   if (hasChanging) {
     prompt += `【动爻爻辞】\n`;
     changingLines.forEach(idx => { prompt += `${posNames[idx]}：${hexagram.yao_ci[idx]}\n`; });
@@ -1212,7 +1216,7 @@ function copyPrompt() {
     if (hexagram.yong_liu && changingLines.length === 6) prompt += `${hexagram.yong_liu}\n`;
     prompt += '\n';
   }
-  prompt += `请结合用户所问之事，用通俗中文解读此卦的吉凶趋势和行动建议。`;
+  prompt += `请结合用户所问之事，综合本卦（现状）与变卦（趋势），用通俗中文解读吉凶趋势和行动建议。`;
 
   const copyToClipboard = (text) => {
     // Prefer async Clipboard API, but guard against it being missing
@@ -1279,7 +1283,7 @@ questionInput.addEventListener('keydown', (e) => {
    PWA SERVICE WORKER
    ================================================================ */
 if ('serviceWorker' in navigator) {
-  const swCode = `const CACHE='liuyao-v6';self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])));self.skipWaiting()});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))));self.clients.claim()});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
+  const swCode = `const CACHE='liuyao-v7';self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])));self.skipWaiting()});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))));self.clients.claim()});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
   const blob = new Blob([swCode], { type: 'application/javascript' });
   navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
 }
