@@ -882,11 +882,15 @@ function getCoinResult(coinStates) {
 }
 
 function buildBinary(lines) {
-  return lines.map(r => (r.line === 'yang' ? '1' : '0')).join('');
+  // HEXAGRAMS key order: upper trigram + lower trigram (each bottom-to-top)
+  const ordered = [lines[3], lines[4], lines[5], lines[0], lines[1], lines[2]];
+  return ordered.map(r => (r.line === 'yang' ? '1' : '0')).join('');
 }
 
 function transformBinary(binary, lines) {
-  return binary.split('').map((bit, i) => (lines[i].changing ? (bit === '1' ? '0' : '1') : bit)).join('');
+  // Same order as buildBinary: upper trigram + lower trigram
+  const ordered = [lines[3], lines[4], lines[5], lines[0], lines[1], lines[2]];
+  return binary.split('').map((bit, i) => (ordered[i].changing ? (bit === '1' ? '0' : '1') : bit)).join('');
 }
 
 function getHexagram(binary) { return HEXAGRAMS[binary] || null; }
@@ -1275,7 +1279,7 @@ questionInput.addEventListener('keydown', (e) => {
    PWA SERVICE WORKER
    ================================================================ */
 if ('serviceWorker' in navigator) {
-  const swCode = `const CACHE='liuyao-v4';self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])));self.skipWaiting()});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))));self.clients.claim()});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
+  const swCode = `const CACHE='liuyao-v5';self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['.'])));self.skipWaiting()});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))));self.clients.claim()});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})`;
   const blob = new Blob([swCode], { type: 'application/javascript' });
   navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
 }
